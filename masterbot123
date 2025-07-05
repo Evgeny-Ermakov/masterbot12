@@ -1,3 +1,6 @@
+# Комменты на русском. Вообще, русского текста должно быть чем меньше, тем лучше. Могут быть проблемы с кодировкой
+# Здесь и далее я буду писать на русском просто, чтобы попонятней было
+
 # ████████████████████████████████████████████████████████████████████████████
 # █                                                                         █
 # █                           MasterBot 12.92                               █
@@ -52,6 +55,8 @@ def get_distribution_keyboard() -> InlineKeyboardMarkup:
 
 # E.Ermakov. Just to create Pull Request
 
+# Логгер определяется в глобальном рпостранстве. Это не красиво. То есть у тебя папки 
+# и логер будут создаваться каждый раз, когда ты просто импортируешь файл, но даже еще не начал с ним работать
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
@@ -61,7 +66,7 @@ logging.basicConfig(
     handlers=[
         RotatingFileHandler(
             os.path.join(LOG_DIR, "masterbot.log"),
-            maxBytes=10 * 1024 * 1024,  # 10 MB
+            maxBytes=10 * 1024 * 1024,  # 10 MB # Захардкоданные числа. Не красиво. Но снизу у тебя через констатнты. Там - правильно
             backupCount=5,
             encoding="utf-8"
         ),
@@ -94,20 +99,29 @@ POLL_DURATION = timedelta(hours=24)
 CACHE_LIFETIME = timedelta(minutes=5)
 
 # Токены и идентификаторы
+# Крайне опасно и не рекомендуется токены и Id держать в открытом виде в файле. 
 API_TOKEN = "7637424219:AAHXYNXHrRNZ1XwNbLx7ieBTZtafe6pmkYo"
 LEADER_ID = os.getenv("MASTERBOT_LEADER_ID", "1018880781")
 
+# Крайне неправильно. Вообще все выполнение идет не в рамках функций и методов, а голым текстом.
+# У тебя алгоритм может начать выполняться, прекращать выполняться (если он асинхронный) в случайные моменты времени
+
+# Логическая ошибка. Если у тебя нет токена, то тут будет ошибка "name 'API_TOKEN' is not defined"
+# А если токен есть, и строка, но пустая, то ты напишешь, что токена нет или не строка
 if not API_TOKEN or not isinstance(API_TOKEN, str):
     logger.critical("[2.0] API_TOKEN не задан или не является строкой")
     raise SystemExit(1)
 logger.info("[2.0] API_TOKEN успешно загружен")
 
+# Чесно говоря, извращение. try/except не нужен для проверки на число. Чуть выше ты на число проверял как 
+# isinstance(..). А вообще, можно просто type(...)
 try:
     LEADER_ID = int(LEADER_ID)
 except (ValueError, TypeError):
     logger.error("[2.0] MASTERBOT_LEADER_ID должен быть числом, получено: %s", LEADER_ID)
     raise SystemExit(1)
 
+# Константы плохо размазывать по коду. Надо их держать рядом
 # Пути к файлам
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BASE_DIR, "logs", "masterbot.log")
@@ -117,6 +131,8 @@ CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 TOKENS_FILE = os.path.join(BASE_DIR, "tokens.json")
 
 # Учетные данные Google Sheets
+# Вообще так образаться с кредами - КРАЙНЕ опасно. Ты хардкодаешь имена,
+# креды лежат в явном виде в google sheets.
 GOOGLE_CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_PATH")
 if not GOOGLE_CREDENTIALS_FILE:
     possible_files = [
@@ -130,23 +146,32 @@ if not GOOGLE_CREDENTIALS_FILE:
             GOOGLE_CREDENTIALS_FILE = candidate
             logger.info("[2.0] Найден файл учетных данных Google Sheets: %s", GOOGLE_CREDENTIALS_FILE)
             break
+       # А что делаем, если файл не найден?
 
 if GOOGLE_CREDENTIALS_FILE and os.path.exists(GOOGLE_CREDENTIALS_FILE):
     try:
         with open(GOOGLE_CREDENTIALS_FILE, 'r', encoding='utf-8') as f:
             creds_data = json.load(f)
             client_email = creds_data.get("client_email", "не указан")
+            # Так мы еще и email клиента явно в логи будем писать? Чтобы раз уж создали утечку кредов и токенов, так и размножим!!
             logger.info("[2.0] Учетные данные Google Sheets загружены: client_email=%s", client_email)
     except (json.JSONDecodeError, KeyError) as e:
         logger.error("[2.0] Ошибка чтения файла учетных данных Google Sheets: %s", e, exc_info=True)
         GOOGLE_CREDENTIALS_FILE = None
 else:
+    # А, вот что. То есть вместо того. чтобы в месте поиска явно указать, что делать, мы делаем вторую (уже избыточную) проверку, 
+    # Но внутри нее еще и try/except - уже третью, дважды избыточную проверку.
+
+    # Но даже потом ты присваиваешь значение переменной, которую ты уже проверял (svetofor-credentials.json) и которой не существует
+    # Выводишь сообщение, что файл, который ты явно присвоеил строчкой выше - не существует. 
     GOOGLE_CREDENTIALS_FILE = os.path.join(BASE_DIR, "svetofor-credentials.json")
     logger.warning(
         "[2.0] Файл учетных данных Google Sheets не найден: %s. Функции Google Sheets будут недоступны.",
         GOOGLE_CREDENTIALS_FILE
     )
+# Ну и по фигу, что файла с кредами не существует. Все равно идем дальше
 
+# Третий сет констант. А в идеале - только один и сверху
 # Константы
 SVETOFOR_SHEET = "Светофор"
 DISTRIBUTION_SPREADSHEET_NAME = "Сводная таблица распределения"
@@ -188,7 +213,7 @@ GAME_ROLE_MAPPING = {
     "Цветочная башня": {"main_leaders": 2, "assistants": 0}
 }
 
-
+# Что за волшебные числа?
 AMOCRM_FIELDS = {
     "event_date":     "87751",    # Дата
     "event_time":     "88565",    # время
@@ -295,18 +320,22 @@ def parse_players_count(players: Any) -> int:
     Returns:
         int: Количество игроков или 0 при ошибке.
     """
+    # Архиизбыточное количество try/except. Они не для таких проверок служат
     try:
         if not players:
             return 0
         players_str = str(players).strip()
-        if "-" in players_str:
+    # Нас волнует только "-" в строке? Там ведь может вообще все, что угодно быть...    
+    if "-" in players_str:
             return int(players_str.split("-")[-1].strip())
         return int(players_str)
     except (ValueError, TypeError) as e:
         logger.warning("[4.0] parse_players_count: Некорректное значение players=%s: %s", players, e)
         return 0
 
+# А зачем этот метод асинхронный? Там же все операции синхронные?
 async def load_json(file_path: str) -> Dict:
+    # Пипец какие многословные комментарии на простенькую функцию
     """Загружает JSON-файл.
 
     Args:
@@ -319,6 +348,7 @@ async def load_json(file_path: str) -> Dict:
         FileNotFoundError: Если файл не найден.
         json.JSONDecodeError: Если файл содержит некорректный JSON.
     """
+  
     if not os.path.exists(file_path):
         logger.error("[4.0] load_json: Файл %s не найден", file_path)
         raise FileNotFoundError(f"Файл {file_path} не найден")
@@ -331,6 +361,7 @@ async def load_json(file_path: str) -> Dict:
         logger.error("[4.0] load_json: Ошибка декодирования JSON в %s: %s", file_path, e)
         raise
 
+# Аналогично, зачем тут асинхронность?
 async def save_json(file_path: str, data: Dict) -> bool:
     """Сохраняет данные в JSON-файл.
 
